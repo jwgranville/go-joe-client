@@ -36,15 +36,31 @@ func main() {
 	}
 
 	subcommand := os.Args[1]
-	fmt.Println("Got:", subcommand)
-
 	switch subcommand {
 	case "ping":
-		runGetPing(os.Args[2:])
+		runPing(os.Args[2:])
 	case "pings":
 		runPings()
 	case "pongs":
 		runPongs()
+	default:
+		fmt.Printf("%q not recognized.\n", subcommand)
+		printUsage()
+	}
+}
+
+func runPing(args []string) {
+	if len(args) < 1 {
+		fmt.Println("ping: subcommand requires argument.")
+		return
+	}
+
+	subcommand := args[0]
+	switch subcommand {
+	case "get":
+		runGetPing(args[1:])
+	case "new":
+		runNewPing(args[1:])
 	default:
 		fmt.Printf("%q not recognized.\n", subcommand)
 		printUsage()
@@ -141,8 +157,8 @@ func printUsage() {
 
 /*
 To do:
-- Send a create ping request and print the reply
-- Implement subcommand syntax
+- Send a create ping request and print the reply X
+- Implement subcommand syntax X
 - List pings X
 - List pongs X
 - Implement login
