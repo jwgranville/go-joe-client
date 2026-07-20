@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Build output
+/bin/
+/dist/
+/go-joe-client
+
+# Go test and profiling output
+*.test
+*.out
+coverage.*
+*.prof
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Local Go workspace files
+go.work
+go.work.sum
