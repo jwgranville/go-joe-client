@@ -8,14 +8,19 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+
+	"golang.org/x/term"
 )
 
 const contentType = "application/json"
 
 const devBaseURL = "http://localhost:8000"
 
+const loginRoute = "/login"
 const pingRoute = "/ping"
 const pongRoute = "/pong"
+
+const devLoginURL = devBaseURL + loginRoute
 
 const devPingURL = devBaseURL + pingRoute
 const devPingsURL = devBaseURL + "/pings"
@@ -23,6 +28,11 @@ const devNewPingURL = devPingURL + "/new"
 
 const devPongURL = devBaseURL + pongRoute
 const devPongsURL = devBaseURL + "/pongs"
+
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
 
 type NewPingRequest struct {
 	Number uint `json:"number"`
@@ -37,6 +47,8 @@ func main() {
 
 	subcommand := os.Args[1]
 	switch subcommand {
+	case "login":
+		runLogin(os.Args[2:])
 	case "ping":
 		runPing(os.Args[2:])
 	case "pings":
@@ -47,6 +59,32 @@ func main() {
 		fmt.Printf("%q not recognized.\n", subcommand)
 		printUsage()
 	}
+}
+
+func runLogin(args []string) {
+	if len(args) < 1 {
+		fmt.Println("login: username is required.")
+		return
+	}
+
+	// Validate username string from args[0] here
+
+	fmt.Print("Enter password: ")
+	passwordBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+	fmt.Println()
+	if err != nil {
+		fmt.Println("Couldn't read password.")
+		return
+	}
+
+	request := LoginRequest{Username: args[0], Password: string(passwordBytes)}
+	body, err := json.Marshal(request)
+	if err != nil {
+		fmt.Println("Unexpected failure marshalling request to JSON:", err)
+		return
+	}
+
+	httpPostTo(devLoginURL, contentType, bytes.NewReader(body))
 }
 
 func runPing(args []string) {
@@ -161,8 +199,8 @@ To do:
 - Implement subcommand syntax X
 - List pings X
 - List pongs X
-- Implement login
-- Move password input to ReadPassword
+- Implement login X
+- Move password input to ReadPassword X
 - Implement token caching (in a config file, possibly hidden?)
 - Implement logout
 - Implement authentication status report
