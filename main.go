@@ -23,6 +23,7 @@ const loginRoute = "/login"
 const logoutRoute = "/logout"
 const pingRoute = "/ping"
 const pongRoute = "/pong"
+const updateRoute = "/update"
 
 const devAuthURL = devBaseURL + authRoute
 const devLoginURL = devBaseURL + loginRoute
@@ -35,6 +36,23 @@ const devNewPingURL = devPingURL + "/new"
 const devPongURL = devBaseURL + pongRoute
 const devPongsURL = devBaseURL + "/pongs"
 const devNewPongURL = devPongURL + "/new"
+
+const usageMessage = `Usage:
+  go-joe-client auth
+  go-joe-client login <username>
+  go-joe-client logout
+
+  go-joe-client ping get <id>
+  go-joe-client ping new <number>
+  go-joe-client ping delete <id>
+  go-joe-client pings
+
+  go-joe-client pong get <id>
+  go-joe-client pong new <number>
+  go-joe-client pong update <id> <number>
+  go-joe-client pong delete <id>
+  go-joe-client pongs
+`
 
 type LoginRequest struct {
 	Username string `json:"username"`
@@ -50,6 +68,10 @@ type NewPingRequest struct {
 }
 
 type NewPongRequest struct {
+	Number uint `json:"number"`
+}
+
+type UpdatePongRequest struct {
 	Number uint `json:"number"`
 }
 
@@ -219,6 +241,8 @@ func runPong(args []string) {
 		runGetPong(args[1:])
 	case "new":
 		runNewPong(args[1:])
+	case "update":
+		runUpdatePong(args[1:])
 	default:
 		fmt.Printf("%q not recognized.\n", subcommand)
 		printUsage()
@@ -383,6 +407,63 @@ func runNewPong(args []string) {
 	}
 }
 
+func runUpdatePong(args []string) {
+	if len(args) < 2 {
+		fmt.Println("pong: update subcommand requires ID and number value.")
+		return
+	}
+
+	id, err := strconv.Atoi(args[0])
+	if err != nil || id < 1 {
+		fmt.Println("pong: update ID argument must be a positive integer.")
+		return
+	}
+
+	num, err := strconv.Atoi(args[1])
+	if err != nil || num < 1 {
+		fmt.Println(
+			"pong: update number value argument must be a positive integer.",
+		)
+		return
+	}
+
+	request := UpdatePongRequest{Number: uint(num)}
+	body, err := json.Marshal(request)
+	if err != nil {
+		fmt.Println("Unexpected failure marshalling request to JSON:", err)
+		return
+	}
+
+	updatePongURL := devPongURL + "/" + strconv.Itoa(id) + updateRoute
+	httpRequest, err := http.NewRequest(
+		http.MethodPost,
+		updatePongURL,
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		fmt.Println("Could not create update pong request:", err)
+		return
+	}
+
+	httpRequest.Header.Set("Content-Type", contentType)
+
+	err = addSavedToken(httpRequest)
+	if err != nil {
+		fmt.Println("Could not read saved token:", err)
+		return
+	}
+
+	resp, err := http.DefaultClient.Do(httpRequest)
+	if err != nil {
+		fmt.Println("Update pong request failed:", err)
+		return
+	}
+	err = printResponse(resp)
+	if err != nil {
+		return
+	}
+}
+
 func runPongs() {
 	httpGetFrom(devPongsURL)
 }
@@ -470,24 +551,5 @@ func addSavedToken(request *http.Request) error {
 }
 
 func printUsage() {
-	fmt.Println("Pretend this is a usage message.")
+	fmt.Print(usageMessage)
 }
-
-/*
-To do:
-- Send a create ping request and print the reply X
-- Implement subcommand syntax X
-- List pings X
-- List pongs X
-- Implement login X
-- Move password input to ReadPassword X
-- Implement token caching (in a config file, possibly hidden?) X
-- Implement logout X
-- Implement authentication status report X
-- Implement create pong request X
-- Implement change ping (no route)
-- Implement change pong
-- Implement delete ping
-- Implement delete pong
-- Implement usage message
-*/
