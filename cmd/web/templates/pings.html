@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+    <title>Go Joe pings</title>
+</head>
+<body>
+    <h1>Pings</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Created</th>
+                <th>Updated</th>
+                <th>Deleted</th>
+                <th>Time</th>
+                <th>Number</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .}}
+            <tr>
+                <td>{{.ID}}</td>
+                <td>{{.CreatedAt}}</td>
+                <td>{{.UpdatedAt}}</td>
+                <td>{{.DeletedAt}}</td>
+                <td>{{.Time}}</td>
+                <td>{{.Number}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</body>
+</html>
