@@ -8,14 +8,16 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"golang.org/x/term"
 )
 
+const appDirName = "go-joe-client"
 const contentType = "application/json"
 const devBaseURL = "http://localhost:8000"
-const tokenPath = ".go-joe-token"
+const tokenFileName = "token"
 
 const authRoute = "/auth"
 const deleteRoute = "/delete"
@@ -110,20 +112,17 @@ func main() {
 }
 
 func runAuth() {
-	token, err := os.ReadFile(tokenPath) // Factor this into a helper
-	if err != nil {
-		fmt.Println("Could not read saved token:", err)
-		return
-	}
-
-	// This too
 	request, err := http.NewRequest(http.MethodGet, devAuthURL, nil)
 	if err != nil {
 		fmt.Println("Could not create auth request:", err)
 		return
 	}
 
-	request.Header.Set("Authorization", string(token))
+	err = addSavedToken(request)
+	if err != nil {
+		fmt.Println("Could not read saved token:", err)
+		return
+	}
 
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
@@ -194,6 +193,12 @@ func runLogout() {
 	}
 
 	if status != http.StatusOK {
+		return
+	}
+
+	tokenPath, err := tokenFilePath()
+	if err != nil {
+		fmt.Println("Could not locate saved token:", err)
 		return
 	}
 
@@ -529,8 +534,44 @@ func printResponse(resp *http.Response) error {
 	return nil
 }
 
+func tokenFilePath() (string, error) {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	appConfigDir := filepath.Join(configDir, appDirName)
+	tokenPath := filepath.Join(appConfigDir, tokenFileName)
+	return tokenPath, nil
+}
+
 func saveTokenToFile(value []byte) {
-	err := os.WriteFile(tokenPath, value, 0600)
+	tokenPath, err := tokenFilePath()
+	if err != nil {
+		fmt.Println("Could not locate user configuration directory:", err)
+		return
+	}
+
+	appConfigDir := filepath.Dir(tokenPath)
+	err = os.MkdirAll(appConfigDir, 0o700)
+	if err != nil {
+		fmt.Println("Could not create application config directory:", err)
+		return
+	}
+
+	err = os.Chmod(appConfigDir, 0o700)
+	if err != nil {
+		fmt.Println("Could not secure application config directory:", err)
+		return
+	}
+
+	err = os.Chmod(tokenPath, 0o600)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		fmt.Println("Could not secure token config file:", err)
+		return
+	}
+
+	err = os.WriteFile(tokenPath, value, 0o600)
 	if err != nil {
 		fmt.Println("Could not write token config file:", err)
 		return
@@ -538,6 +579,11 @@ func saveTokenToFile(value []byte) {
 }
 
 func addSavedToken(request *http.Request) error {
+	tokenPath, err := tokenFilePath()
+	if err != nil {
+		return err
+	}
+
 	token, err := os.ReadFile(tokenPath)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
