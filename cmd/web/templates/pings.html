@@ -19,7 +19,7 @@
         <tbody>
             {{range .}}
             <tr>
-                <td>{{.ID}}</td>
+                <td><a href="/ping/{{.ID}}">{{.ID}}</a></td>
                 <td>{{.CreatedAt}}</td>
                 <td>{{.UpdatedAt}}</td>
                 <td>{{.DeletedAt}}</td>

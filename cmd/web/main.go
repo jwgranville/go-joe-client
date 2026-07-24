@@ -7,19 +7,27 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 )
 
 const appName = "Go Joe web client"
 
 const devBaseURL = "http://localhost:8000"
+
+const devPingURL = devBaseURL + "/ping"
 const devPingsURL = devBaseURL + "/pings"
+
 const webServerPort = "8080"
 
 const webServerAddressFormat = ":%s"
 
 var homeTemplate = template.Must(
 	template.ParseFiles("cmd/web/templates/home.html"),
+)
+
+var pingTemplate = template.Must(
+	template.ParseFiles("cmd/web/templates/ping.html"),
 )
 
 var pingsTemplate = template.Must(
@@ -38,6 +46,7 @@ type PingRecord struct {
 func main() {
 	http.HandleFunc("/", showHome)
 	http.HandleFunc("/pings", showPings)
+	http.HandleFunc("GET /ping/{id}", showPing)
 
 	serverAddress := fmt.Sprintf(webServerAddressFormat, webServerPort)
 	host, port, err := net.SplitHostPort(serverAddress)
@@ -64,6 +73,54 @@ func showHome(w http.ResponseWriter, r *http.Request) {
 	err := homeTemplate.Execute(w, appName)
 	if err != nil {
 		log.Println("Could not render home template:", err)
+	}
+}
+
+func showPing(w http.ResponseWriter, r *http.Request) {
+	idValue := r.PathValue("id")
+
+	id, err := strconv.Atoi(idValue)
+	if err != nil || id < 1 {
+		http.Error(
+			w,
+			"Ping ID must be a positive integer.",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	pingURL := devPingURL + "/" + strconv.Itoa(id)
+	resp, err := http.Get(pingURL)
+	if err != nil {
+		http.Error(w, "Could not retrieve ping.", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		message := "Ping API returned " + resp.Status
+		http.Error(w, message, http.StatusBadGateway)
+		return
+	}
+
+	record := PingRecord{}
+
+	decoder := json.NewDecoder(resp.Body)
+	err = decoder.Decode(&record)
+	if err != nil {
+		http.Error(
+			w,
+			"Could not decode ping response.",
+			http.StatusBadGateway,
+		)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	err = pingTemplate.Execute(w, record)
+	if err != nil {
+		log.Println("Could not render ping template:", err)
 	}
 }
 
