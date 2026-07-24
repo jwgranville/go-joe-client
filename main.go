@@ -18,6 +18,7 @@ const devBaseURL = "http://localhost:8000"
 const tokenPath = ".go-joe-token"
 
 const authRoute = "/auth"
+const deleteRoute = "/delete"
 const loginRoute = "/login"
 const logoutRoute = "/logout"
 const pingRoute = "/ping"
@@ -33,6 +34,7 @@ const devNewPingURL = devPingURL + "/new"
 
 const devPongURL = devBaseURL + pongRoute
 const devPongsURL = devBaseURL + "/pongs"
+const devNewPongURL = devPongURL + "/new"
 
 type LoginRequest struct {
 	Username string `json:"username"`
@@ -44,6 +46,10 @@ type LoginResponse struct {
 }
 
 type NewPingRequest struct {
+	Number uint `json:"number"`
+}
+
+type NewPongRequest struct {
 	Number uint `json:"number"`
 }
 
@@ -71,6 +77,8 @@ func main() {
 		runPing(os.Args[2:])
 	case "pings":
 		runPings()
+	case "pong":
+		runPong(os.Args[2:])
 	case "pongs":
 		runPongs()
 	default:
@@ -101,9 +109,9 @@ func runAuth() {
 		return
 	}
 	err = printResponse(resp)
-    if err != nil {
-        return
-    }
+	if err != nil {
+		return
+	}
 }
 
 func runLogin(args []string) {
@@ -169,7 +177,7 @@ func runLogout() {
 
 	err = os.Remove(tokenPath)
 	if errors.Is(err, os.ErrNotExist) {
-	    return
+		return
 	}
 	if err != nil {
 		fmt.Println("Could not remove saved token:", err)
@@ -185,6 +193,8 @@ func runPing(args []string) {
 
 	subcommand := args[0]
 	switch subcommand {
+	case "delete":
+		runDeletePing(args[1:])
 	case "get":
 		runGetPing(args[1:])
 	case "new":
@@ -193,6 +203,42 @@ func runPing(args []string) {
 		fmt.Printf("%q not recognized.\n", subcommand)
 		printUsage()
 	}
+}
+
+func runPong(args []string) {
+	if len(args) < 1 {
+		fmt.Println("pong: subcommand requires argument.")
+		return
+	}
+
+	subcommand := args[0]
+	switch subcommand {
+	case "delete":
+		runDeletePong(args[1:])
+	case "get":
+		runGetPong(args[1:])
+	case "new":
+		runNewPong(args[1:])
+	default:
+		fmt.Printf("%q not recognized.\n", subcommand)
+		printUsage()
+	}
+}
+
+func runDeletePing(args []string) {
+	if len(args) < 1 {
+		fmt.Println("ping: subcommand requires argument.")
+		return
+	}
+
+	id, err := strconv.Atoi(args[0])
+	if err != nil || id < 1 {
+		fmt.Println("ping: subcommand ID argument must be a positive integer.")
+		return
+	}
+
+	deletePingURL := devPingURL + "/" + strconv.Itoa(id) + deleteRoute
+	httpPostTo(deletePingURL, "", nil)
 }
 
 func runGetPing(args []string) {
@@ -235,6 +281,106 @@ func runNewPing(args []string) {
 
 func runPings() {
 	httpGetFrom(devPingsURL)
+}
+
+func runDeletePong(args []string) {
+	if len(args) < 1 {
+		fmt.Println("pong: subcommand requires argument.")
+		return
+	}
+
+	id, err := strconv.Atoi(args[0])
+	if err != nil || id < 1 {
+		fmt.Println("pong: subcommand ID argument must be a positive integer.")
+		return
+	}
+
+	deletePongURL := devPongURL + "/" + strconv.Itoa(id) + deleteRoute
+	httpRequest, err := http.NewRequest(http.MethodPost, deletePongURL, nil)
+	if err != nil {
+		fmt.Println("Could not create delete pong request:", err)
+		return
+	}
+
+	err = addSavedToken(httpRequest)
+	if err != nil {
+		fmt.Println("Could not read saved token:", err)
+		return
+	}
+
+	resp, err := http.DefaultClient.Do(httpRequest)
+	if err != nil {
+		fmt.Println("Delete pong request failed:", err)
+		return
+	}
+	err = printResponse(resp)
+	if err != nil {
+		return
+	}
+}
+
+func runGetPong(args []string) {
+	if len(args) < 1 {
+		fmt.Println("pong: subcommand requires argument.")
+		return
+	}
+
+	id, err := strconv.Atoi(args[0])
+	if err != nil || id < 1 {
+		fmt.Println("pong: subcommand ID argument must be a positive integer.")
+		return
+	}
+
+	getPongURL := devPongURL + "/" + strconv.Itoa(id)
+	httpGetFrom(getPongURL)
+}
+
+func runNewPong(args []string) {
+	if len(args) < 1 {
+		fmt.Println("pong: subcommand requires argument.")
+		return
+	}
+
+	num, err := strconv.Atoi(args[0])
+	if err != nil || num < 1 {
+		fmt.Println("pong: subcommand argument must be a positive integer.")
+		return
+	}
+
+	request := NewPongRequest{Number: uint(num)}
+	body, err := json.Marshal(request)
+	if err != nil {
+		fmt.Println("Unexpected failure marshalling request to JSON:", err)
+		return
+	}
+
+	httpRequest, err := http.NewRequest(
+		http.MethodPost,
+		devNewPongURL,
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		fmt.Println("Could not create new pong request:", err)
+		return
+	}
+
+	httpRequest.Header.Set("Content-Type", contentType)
+
+	err = addSavedToken(httpRequest)
+	if err != nil {
+		fmt.Println("Could not read saved token:", err)
+		return
+	}
+
+	resp, err := http.DefaultClient.Do(httpRequest)
+	if err != nil {
+		fmt.Println("New pong request failed:", err)
+		return
+	}
+	err = printResponse(resp)
+	if err != nil {
+		return
+	}
 }
 
 func runPongs() {
@@ -310,6 +456,19 @@ func saveTokenToFile(value []byte) {
 	}
 }
 
+func addSavedToken(request *http.Request) error {
+	token, err := os.ReadFile(tokenPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	request.Header.Set("Authorization", string(token))
+	return nil
+}
+
 func printUsage() {
 	fmt.Println("Pretend this is a usage message.")
 }
@@ -325,8 +484,8 @@ To do:
 - Implement token caching (in a config file, possibly hidden?) X
 - Implement logout X
 - Implement authentication status report X
-- Implement create pong request
-- Implement change ping
+- Implement create pong request X
+- Implement change ping (no route)
 - Implement change pong
 - Implement delete ping
 - Implement delete pong
