@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
 <head>
-    <title>Go Joe pings</title>
+    <title>{{.AppName}} pings</title>
 </head>
 <body>
     <h1>Pings</h1>
@@ -17,7 +17,7 @@
             </tr>
         </thead>
         <tbody>
-            {{range .}}
+            {{range .Records}}
             <tr>
                 <td><a href="/ping/{{.ID}}">{{.ID}}</a></td>
                 <td>{{.CreatedAt}}</td>

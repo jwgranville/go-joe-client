@@ -1,35 +1,35 @@
 <!doctype html>
 <html>
 <head>
-    <title>Go Joe pings</title>
+    <title>{{.AppName}} pings</title>
 </head>
 <body>
-    <h1>Ping {{.ID}}</h1>
+    <h1>Ping {{.Record.ID}}</h1>
     <table>
         <tbody>
             <tr>
                 <th scope="row">ID</th>
-                <td>{{.ID}}</td>
+                <td>{{.Record.ID}}</td>
             </tr>
             <tr>
                 <th scope="row">Created At</th>
-                <td>{{.CreatedAt}}</td>
+                <td>{{.Record.CreatedAt}}</td>
             </tr>
             <tr>
                 <th scope="row">Updated At</th>
-                <td>{{.UpdatedAt}}</td>
+                <td>{{.Record.UpdatedAt}}</td>
             </tr>
             <tr>
                 <th scope="row">Deleted At</th>
-                <td>{{.DeletedAt}}</td>
+                <td>{{.Record.DeletedAt}}</td>
             </tr>
             <tr>
                 <th scope="row">Time</th>
-                <td>{{.Time}}</td>
+                <td>{{.Record.Time}}</td>
             </tr>
             <tr>
                 <th scope="row">Number</th>
-                <td>{{.Number}}</td>
+                <td>{{.Record.Number}}</td>
             </tr>
         </tbody>
     </table>
