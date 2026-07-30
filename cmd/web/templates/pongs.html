@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+    <title>{{.AppName}} pongs</title>
+</head>
+<body>
+    <h1>Pongs</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Created</th>
+                <th>Updated</th>
+                <th>Deleted</th>
+                <th>Time</th>
+                <th>Number</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Records}}
+            <tr>
+                <td><a href="/pong/{{.ID}}">{{.ID}}</a></td>
+                <td>{{.CreatedAt}}</td>
+                <td>{{.UpdatedAt}}</td>
+                <td>{{.DeletedAt}}</td>
+                <td>{{.Time}}</td>
+                <td>{{.Number}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</body>
+</html>

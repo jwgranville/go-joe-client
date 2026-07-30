@@ -23,6 +23,9 @@ const devNewPingURL = devPingURL + "/new"
 const devPingURL = devBaseURL + "/ping"
 const devPingsURL = devBaseURL + "/pings"
 
+const devPongURL = devBaseURL + "/pong"
+const devPongsURL = devBaseURL + "/pongs"
+
 var homeTemplate = template.Must(
 	template.ParseFiles("cmd/web/templates/home.html"),
 )
@@ -39,7 +42,24 @@ var pingsTemplate = template.Must(
 	template.ParseFiles("cmd/web/templates/pings.html"),
 )
 
+var pongTemplate = template.Must(
+	template.ParseFiles("cmd/web/templates/pong.html"),
+)
+
+var pongsTemplate = template.Must(
+	template.ParseFiles("cmd/web/templates/pongs.html"),
+)
+
 type PingRecord struct {
+	ID        uint       `json:"ID"`
+	CreatedAt time.Time  `json:"CreatedAt"`
+	UpdatedAt time.Time  `json:"UpdatedAt"`
+	DeletedAt *time.Time `json:"DeletedAt"`
+	Time      time.Time  `json:"time"`
+	Number    uint       `json:"number"`
+}
+
+type PongRecord struct {
 	ID        uint       `json:"ID"`
 	CreatedAt time.Time  `json:"CreatedAt"`
 	UpdatedAt time.Time  `json:"UpdatedAt"`
@@ -54,11 +74,15 @@ type NewPingRequest struct {
 
 func main() {
 	http.HandleFunc("/", showHome)
+
 	http.HandleFunc("POST /ping/{id}/delete", deletePing)
 	http.HandleFunc("GET /ping/{id}", showPing)
 	http.HandleFunc("GET /ping/new", showNewPing)
 	http.HandleFunc("POST /ping/new", createPing)
 	http.HandleFunc("/pings", showPings)
+
+	http.HandleFunc("GET /pong/{id}", showPong)
+	http.HandleFunc("GET /pongs", showPongs)
 
 	serverAddress := fmt.Sprintf(webServerAddressFormat, webServerPort)
 	host, port, err := net.SplitHostPort(serverAddress)
@@ -257,5 +281,96 @@ func showPings(w http.ResponseWriter, r *http.Request) {
 	err = pingsTemplate.Execute(w, data)
 	if err != nil {
 		log.Println("Could not render pings template:", err)
+	}
+}
+
+func showPong(w http.ResponseWriter, r *http.Request) {
+	idValue := r.PathValue("id")
+
+	id, err := strconv.Atoi(idValue)
+	if err != nil || id < 1 {
+		http.Error(
+			w,
+			"Pong ID must be a positive integer.",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	pongURL := devPongURL + "/" + strconv.Itoa(id)
+	resp, err := http.Get(pongURL)
+	if err != nil {
+		http.Error(w, "Could not retrieve pong.", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		message := "Pong API returned " + resp.Status
+		http.Error(w, message, http.StatusBadGateway)
+		return
+	}
+
+	record := PongRecord{}
+
+	decoder := json.NewDecoder(resp.Body)
+	err = decoder.Decode(&record)
+	if err != nil {
+		http.Error(
+			w,
+			"Could not decode pong response.",
+			http.StatusBadGateway,
+		)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	data := map[string]any{
+		"AppName": appName,
+		"Record":  record,
+	}
+	err = pongTemplate.Execute(w, data)
+	if err != nil {
+		log.Println("Could not render pong template:", err)
+	}
+}
+
+func showPongs(w http.ResponseWriter, r *http.Request) {
+	resp, err := http.Get(devPongsURL)
+	if err != nil {
+		http.Error(w, "Could not retrieve pongs.", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		message := "Pongs API returned " + resp.Status
+		http.Error(w, message, http.StatusBadGateway)
+		return
+	}
+
+	records := []PongRecord{}
+
+	decoder := json.NewDecoder(resp.Body)
+	err = decoder.Decode(&records)
+	if err != nil {
+		http.Error(
+			w,
+			"Could not decode pongs response.",
+			http.StatusBadGateway,
+		)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	data := map[string]any{
+		"AppName": appName,
+		"Records": records,
+	}
+	err = pongsTemplate.Execute(w, data)
+	if err != nil {
+		log.Println("Could not render pongs template:", err)
 	}
 }
