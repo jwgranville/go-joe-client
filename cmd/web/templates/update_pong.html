@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+    <title>{{.AppName}} update pong {{.Record.ID}}</title>
+</head>
+<body>
+    <h1>Update Pong {{.Record.ID}}</h1>
+    <form method="post" action="/pong/{{.Record.ID}}/update">
+        <label for="number">Number</label>
+        <input
+            id="number"
+            type="number"
+            name="number"
+            value="{{.Record.Number}}"
+            min="1"
+            required
+        >
+        <button type="submit">Update pong</button>
+    </form>
+</body>
+</html>
