@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+<head>
+    <title>{{ . }} create new pong</title>
+</head>
+<body>
+    <h1>Create New Pong</h1>
+    <form method="post" action="/pong/new">
+        <label for="number">Number</label>
+        <input id="number" type="number" name="number" min="1" required>
+        <button type="submit">Create pong</button>
+    </form>
+</body>
+</html>

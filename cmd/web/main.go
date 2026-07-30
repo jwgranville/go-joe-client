@@ -28,6 +28,7 @@ const devNewPingURL = devPingURL + "/new"
 const devPingURL = devBaseURL + "/ping"
 const devPingsURL = devBaseURL + "/pings"
 
+const devNewPongURL = devPongURL + "/new"
 const devPongURL = devBaseURL + "/pong"
 const devPongsURL = devBaseURL + "/pongs"
 
@@ -53,6 +54,10 @@ var pingTemplate = template.Must(
 
 var pingsTemplate = template.Must(
 	template.ParseFiles("cmd/web/templates/pings.html"),
+)
+
+var newPongTemplate = template.Must(
+	template.ParseFiles("cmd/web/templates/new_pong.html"),
 )
 
 var pongTemplate = template.Must(
@@ -94,6 +99,10 @@ type NewPingRequest struct {
 	Number uint `json:"number"`
 }
 
+type NewPongRequest struct {
+	Number uint `json:"number"`
+}
+
 func main() {
 	http.HandleFunc("/", showHome)
 
@@ -109,6 +118,8 @@ func main() {
 	http.HandleFunc("/pings", showPings)
 
 	http.HandleFunc("GET /pong/{id}", showPong)
+	http.HandleFunc("GET /pong/new", showNewPong)
+	http.HandleFunc("POST /pong/new", createPong)
 	http.HandleFunc("GET /pongs", showPongs)
 
 	serverAddress := fmt.Sprintf(webServerAddressFormat, webServerPort)
@@ -398,6 +409,15 @@ func deletePing(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/pings", http.StatusSeeOther)
 }
 
+func showNewPong(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	err := newPongTemplate.Execute(w, appName)
+	if err != nil {
+		log.Println("Could not render new pong template:", err)
+	}
+}
+
 func showPing(w http.ResponseWriter, r *http.Request) {
 	idValue := r.PathValue("id")
 
@@ -477,6 +497,74 @@ func showPings(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Could not render pings template:", err)
 	}
+}
+
+func createPong(w http.ResponseWriter, r *http.Request) {
+	numberValue := r.FormValue("number")
+	number, err := strconv.Atoi(numberValue)
+	if err != nil || number < 1 {
+		http.Error(
+			w,
+			"Pong number value must be a positive integer.",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	request := NewPongRequest{Number: uint(number)}
+	body, err := json.Marshal(request)
+	if err != nil {
+		http.Error(
+			w,
+			"Could not encode pong request.",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	tokenCookie, err := r.Cookie(tokenCookieName)
+	if err != nil {
+		http.Error(w, "Not logged in.", http.StatusUnauthorized)
+		return
+	}
+
+	httpRequest, err := http.NewRequest(
+		http.MethodPost,
+		devNewPongURL,
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		http.Error(
+			w,
+			"Could not create pong request.",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	httpRequest.Header.Set("Content-Type", contentType)
+	httpRequest.Header.Set("Authorization", tokenCookie.Value)
+
+	resp, err := http.DefaultClient.Do(httpRequest)
+	if err != nil {
+		http.Error(w, "Could not create pong.", http.StatusBadGateway)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		http.Error(w, "Not logged in.", http.StatusUnauthorized)
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		message := "Pong API returned " + resp.Status
+		http.Error(w, message, http.StatusBadGateway)
+		return
+	}
+
+	http.Redirect(w, r, "/pongs", http.StatusSeeOther)
 }
 
 func showPong(w http.ResponseWriter, r *http.Request) {
