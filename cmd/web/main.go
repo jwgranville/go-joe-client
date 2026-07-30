@@ -127,6 +127,7 @@ func main() {
 
 	http.HandleFunc("GET /pongs", showPongs)
 	http.HandleFunc("GET /pong/{id}", showPong)
+	http.HandleFunc("POST /pong/{id}/delete", deletePong)
 	http.HandleFunc("GET /pong/{id}/update", showUpdatePong)
 	http.HandleFunc("POST /pong/{id}/update", updatePong)
 	http.HandleFunc("GET /pong/new", showNewPong)
@@ -579,6 +580,61 @@ func showPong(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Could not render pong template:", err)
 	}
+}
+
+func deletePong(w http.ResponseWriter, r *http.Request) {
+	idValue := r.PathValue("id")
+
+	id, err := strconv.Atoi(idValue)
+	if err != nil || id < 1 {
+		http.Error(
+			w,
+			"Pong ID must be a positive integer.",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	tokenCookie, err := r.Cookie(tokenCookieName)
+	if err != nil {
+		http.Error(w, "Not logged in.", http.StatusUnauthorized)
+		return
+	}
+
+	deletePongURL := devPongURL + "/" + strconv.Itoa(id) + "/delete"
+
+	httpRequest, err := http.NewRequest(http.MethodPost, deletePongURL, nil)
+	if err != nil {
+		http.Error(
+			w,
+			"Could not create pong deletion request.",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	httpRequest.Header.Set("Authorization", tokenCookie.Value)
+
+	resp, err := http.DefaultClient.Do(httpRequest)
+	if err != nil {
+		http.Error(w, "Could not delete pong.", http.StatusBadGateway)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		http.Error(w, "Not logged in.", http.StatusUnauthorized)
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		message := "Pong API returned " + resp.Status
+		http.Error(w, message, http.StatusBadGateway)
+		return
+	}
+
+	http.Redirect(w, r, "/pongs", http.StatusSeeOther)
 }
 
 func showNewPong(w http.ResponseWriter, r *http.Request) {

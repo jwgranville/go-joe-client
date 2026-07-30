@@ -36,5 +36,8 @@
     <p>
         <a href="/pong/{{.Record.ID}}/update">Update pong</a>
     </p>
+    <form method="post" action="/pong/{{.Record.ID}}/delete">
+        <button type="submit">Delete pong</button>
+    </form>
 </body>
 </html>
