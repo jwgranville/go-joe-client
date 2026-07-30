@@ -54,6 +54,7 @@ type NewPingRequest struct {
 
 func main() {
 	http.HandleFunc("/", showHome)
+	http.HandleFunc("POST /ping/{id}/delete", deletePing)
 	http.HandleFunc("GET /ping/{id}", showPing)
 	http.HandleFunc("GET /ping/new", showNewPing)
 	http.HandleFunc("POST /ping/new", createPing)
@@ -122,6 +123,38 @@ func createPing(w http.ResponseWriter, r *http.Request) {
 	resp, err := http.Post(devNewPingURL, contentType, bytes.NewReader(body))
 	if err != nil {
 		http.Error(w, "Could not create ping.", http.StatusBadGateway)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		message := "Ping API returned " + resp.Status
+		http.Error(w, message, http.StatusBadGateway)
+		return
+	}
+
+	http.Redirect(w, r, "/pings", http.StatusSeeOther)
+}
+
+func deletePing(w http.ResponseWriter, r *http.Request) {
+	idValue := r.PathValue("id")
+
+	id, err := strconv.Atoi(idValue)
+	if err != nil || id < 1 {
+		http.Error(
+			w,
+			"Ping ID must be a positive integer.",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	deletePingURL := devPingURL + "/" + strconv.Itoa(id) + "/delete"
+
+	resp, err := http.Post(deletePingURL, "", nil)
+	if err != nil {
+		http.Error(w, "Could not delete ping.", http.StatusBadGateway)
 		return
 	}
 
