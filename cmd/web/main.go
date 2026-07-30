@@ -112,14 +112,14 @@ type UpdatePongRequest struct {
 }
 
 func main() {
-	http.HandleFunc("/", showHome)
+	http.HandleFunc("GET /{$}", showHome)
 
 	http.HandleFunc("GET /auth", showAuth)
 	http.HandleFunc("GET /login", showLogin)
 	http.HandleFunc("POST /login", login)
 	http.HandleFunc("POST /logout", logout)
 
-	http.HandleFunc("/pings", showPings)
+	http.HandleFunc("GET /pings", showPings)
 	http.HandleFunc("GET /ping/{id}", showPing)
 	http.HandleFunc("POST /ping/{id}/delete", deletePing)
 	http.HandleFunc("GET /ping/new", showNewPing)
